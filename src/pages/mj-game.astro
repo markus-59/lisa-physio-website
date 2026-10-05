@@ -1,0 +1,1300 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { url } from "../data/site";
+
+// Michael's frames were cut from MJ/Mj2.png, the sports kit from sport/ and the sounds from the MJ/ videos.
+// All of them live in public/mj-game/.
+const sprites = url("/mj-game/mj-sprites.png");
+const sportsKit = url("/mj-game/mj-sports.png");
+const jumpSound = url("/mj-game/mj-hehe.mp3");
+const crashSound = url("/mj-game/mj-ow.mp3");
+
+/** The Masters, in the order Michael studies it. One module per 150 points. */
+const modules = [
+  "Anatomy",
+  "Physiology",
+  "Biomechanics",
+  "Musculoskeletal rehab",
+  "Neuro rehab",
+  "Cardiorespiratory",
+  "Clinical placement",
+  "Dissertation",
+];
+---
+
+<BaseLayout title="Smooth Graduate" description="A jumping game: help Michael Jackson earn his Masters in Physiotherapy.">
+  <h1>Smooth Graduate</h1>
+  <p class="mt-4 max-w-prose">
+    Michael Jackson is studying for a Masters in Physiotherapy. Help him jump over the obstacles in his way, pass
+    all {modules.length} modules and graduate. Each module brings its own obstacles, from textbooks and sports kit to
+    physio gym gear and aged-care equipment.
+  </p>
+
+  <section
+    data-game
+    data-sprites={sprites}
+    data-sports={sportsKit}
+    data-jump-sound={jumpSound}
+    data-crash-sound={crashSound}
+    data-modules={JSON.stringify(modules)}
+    tabindex="-1"
+    aria-label="Smooth Graduate game"
+    class="mt-8 overflow-hidden rounded-xl border border-line bg-white shadow-sm outline-none"
+  >
+    <div class="flex flex-wrap items-center gap-x-5 gap-y-1 px-4 pt-3 pb-2 text-sm">
+      <p data-module class="mr-auto font-bold">Module 1 of {modules.length}: {modules[0]}</p>
+      <p class="tabular-nums">Score <span data-score class="font-bold">0</span></p>
+      <p class="text-muted tabular-nums">Best <span data-best>0</span></p>
+      <button
+        type="button"
+        data-mute
+        class="rounded-full border border-line px-3 py-1 font-bold transition-colors hover:border-tape"
+      >
+        Sound: on
+      </button>
+    </div>
+
+    <ol class="grid grid-cols-8 gap-1 px-4 pb-3" aria-label="Module progress">
+      {
+        modules.map((name) => (
+          <li title={name} class="h-1.5 overflow-hidden rounded-full bg-line">
+            <span data-segment class="block h-full w-0 bg-tape" />
+            <span class="sr-only">{name}</span>
+          </li>
+        ))
+      }
+    </ol>
+
+    <div data-stage class="relative touch-none select-none" style="-webkit-tap-highlight-color: transparent">
+      <canvas
+        class="block w-full"
+        style="aspect-ratio: 640 / 200"
+        role="img"
+        aria-label="Michael Jackson walks to the right past study obstacles"></canvas>
+
+      <p
+        data-banner
+        aria-live="polite"
+        class="pointer-events-none absolute top-3 left-1/2 max-w-[90%] -translate-x-1/2 rounded-full bg-white/95 px-4 py-1.5 text-center text-sm font-bold text-ink opacity-0 shadow-sm motion-safe:transition-opacity motion-safe:duration-300"
+      >
+      </p>
+
+      <div data-overlay class="absolute inset-0 flex items-center justify-center bg-ink/25 p-3">
+        <div aria-live="polite" class="max-w-sm rounded-xl bg-white px-5 py-3 text-center shadow-lg sm:px-6 sm:py-5">
+          <h2 data-overlay-title class="text-2xl sm:text-3xl">Ready to study?</h2>
+          <p data-overlay-text class="mt-1 text-xs text-muted sm:text-sm">
+            Pass all {modules.length} modules to earn the Masters.
+          </p>
+          <button
+            type="button"
+            data-overlay-button
+            class="mt-3 rounded-full bg-tape px-5 py-1.5 font-bold text-white transition-colors hover:bg-tape-deep sm:py-2"
+          >
+            Start
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <noscript><p class="mt-4 font-bold">The game needs JavaScript turned on.</p></noscript>
+
+  <ul class="mt-4 space-y-1 text-sm text-muted">
+    <li><b class="text-ink">Jump:</b> Space, up arrow or tap the game. Hold for a higher jump.</li>
+    <li><b class="text-ink">Drop faster:</b> down arrow.</li>
+    <li><b class="text-ink">Pause:</b> P. <b class="text-ink">Sound on or off:</b> M.</li>
+  </ul>
+</BaseLayout>
+
+<script>
+  type Rect = { x: number; y: number; w: number; h: number };
+  /** A frame in mj-sprites.png, with the centre and top of Michael's hat inside it. */
+  type Frame = Rect & { hx: number; hy: number };
+  /** Obstacle pictures: several images make an animation. `box` is the part that hurts. */
+  type Art = { img: HTMLCanvasElement[]; box: Rect };
+  /** `roll` is how much faster than the ground a ball rolls at Michael; `ready` is false while its picture loads. */
+  type Kind = {
+    name: string;
+    minGap: number;
+    maxGroup: number;
+    fly?: boolean;
+    roll?: number;
+    art: () => Art;
+    ready?: () => boolean;
+  };
+  type Obstacle = { kind: Kind; art: Art; group: number; x: number; y: number; w: number; gap: number; drift: number; clock: number };
+  type Bit = { x: number; y: number; vx: number; vy: number; colour: string; life: number };
+  type Theme = { skyTop: number[]; skyBottom: number[]; far: number[]; window: number[]; ground: number[]; line: number[]; night: number };
+
+  const root = document.querySelector<HTMLElement>("[data-game]")!;
+  const stage = root.querySelector<HTMLElement>("[data-stage]")!;
+  const canvas = stage.querySelector("canvas")!;
+  const screen = canvas.getContext("2d")!;
+  const banner = root.querySelector<HTMLElement>("[data-banner]")!;
+  const overlay = root.querySelector<HTMLElement>("[data-overlay]")!;
+  const overlayTitle = root.querySelector<HTMLElement>("[data-overlay-title]")!;
+  const overlayText = root.querySelector<HTMLElement>("[data-overlay-text]")!;
+  const overlayButton = root.querySelector<HTMLButtonElement>("[data-overlay-button]")!;
+  const moduleLabel = root.querySelector<HTMLElement>("[data-module]")!;
+  const scoreLabel = root.querySelector<HTMLElement>("[data-score]")!;
+  const bestLabel = root.querySelector<HTMLElement>("[data-best]")!;
+  const muteButton = root.querySelector<HTMLButtonElement>("[data-mute]")!;
+  const segments = [...root.querySelectorAll<HTMLElement>("[data-segment]")];
+  const MODULES: string[] = JSON.parse(root.dataset.modules!);
+
+  // Tuning. Speeds are game pixels per 60th of a second, as in Chrome's dinosaur game.
+  const VIEW_H = 200;
+  const GROUND = 176; // the row Michael's shoes stand on
+  const MJ_X = 64; // where Michael's hat sits
+  const START_SPEED = 6;
+  const MAX_SPEED = 12;
+  const ACCELERATION = 0.0007;
+  const GRAVITY = 0.6;
+  const JUMP_SPEED = 10;
+  const SHORT_HOP_SPEED = -5; // letting go early cuts the climb to this
+  const MIN_JUMP = 30;
+  const POINTS_PER_MODULE = 150;
+  const FIRST_OBSTACLE_MS = 1200;
+  const BEST_KEY = "smooth-graduate-best";
+  const MUTE_KEY = "smooth-graduate-muted";
+
+  const INK = "#18212b";
+  const WHITE = "#ffffff";
+  const TAPE = "#1c5d99";
+  const TAPE_DEEP = "#133f69";
+  const TAPE_LIGHT = "#4a86c0";
+  const PINK = "#d94f70";
+  const GOLD = "#e8b84a";
+  const GREEN = "#2f8f6a";
+  const IRON = "#4a5562";
+  const BONE = "#efe8d6";
+  const PAGE = "#f3ead2";
+
+  // Michael's frames: [x, y, w, h, hat centre, hat top]. Each is drawn with its hat at MJ_X so his head stays steady.
+  const frame = ([x, y, w, h, hx, hy]: number[]): Frame => ({ x, y, w, h, hx, hy });
+  const WALK = [
+    [1, 1, 14, 47, 10, 0], [16, 1, 18, 47, 14, 0], [35, 1, 14, 47, 10, 0], [50, 1, 20, 47, 10, 0],
+    [71, 1, 18, 47, 14, 0], [90, 1, 14, 47, 10, 0], [105, 1, 17, 47, 10, 0], [123, 1, 18, 47, 10, 0],
+    [142, 1, 15, 47, 11, 0], [158, 1, 14, 47, 10, 0], [173, 1, 20, 47, 10, 0], [194, 1, 18, 47, 14, 0],
+  ].map(frame);
+  const TAKEOFF = frame([213, 1, 22, 45, 12, 0]);
+  const TUCK = frame([236, 1, 24, 33, 16, 0]);
+  const FALLEN = frame([261, 1, 44, 13, 22, 0]);
+  const CHEER = frame([306, 1, 30, 50, 14, 6]);
+
+  // ---------- Obstacle art, drawn once into small canvases ----------
+
+  type Put = (colour: string, x: number, y: number, w?: number, h?: number) => void;
+
+  function paint(width: number, height: number, draw: (put: Put) => void) {
+    const c = document.createElement("canvas");
+    c.width = width;
+    c.height = height;
+    const g = c.getContext("2d")!;
+    draw((colour, x, y, w = 1, h = 1) => {
+      g.fillStyle = colour;
+      g.fillRect(x, y, w, h);
+    });
+    return c;
+  }
+
+  const PALETTE: Record<string, string> = {
+    k: INK, w: WHITE, b: TAPE, o: "#f08a2c", r: "#d64545", i: IRON, h: "#8692a0", c: "#a8713f", g: "#9aa5b1",
+    s: "#ccd3da",
+  };
+
+  /** Pixel art from rows of palette letters; "." is see-through. */
+  function pixels(rows: string[]) {
+    return paint(rows[0].length, rows.length, (put) =>
+      rows.forEach((row, y) => [...row].forEach((ch, x) => PALETTE[ch] && put(PALETTE[ch], x, y))),
+    );
+  }
+
+  /** A stack of 3 to 5 textbooks, freshly shuffled each time. */
+  function books(): Art {
+    const count = 3 + Math.floor(Math.random() * 3);
+    const covers = [TAPE, PINK, GREEN, GOLD, TAPE_DEEP];
+    const h = count * 6 + 1;
+    let left = 30;
+    let right = 0;
+    const img = paint(30, h, (put) => {
+      for (let i = 0; i < count; i++) {
+        const w = 22 + Math.floor(Math.random() * 8);
+        const x = Math.floor(Math.random() * (31 - w));
+        const y = h - 7 - i * 6;
+        left = Math.min(left, x);
+        right = Math.max(right, x + w);
+        put(INK, x, y, w, 7);
+        put(covers[(i + count) % covers.length], x + 1, y + 1, w - 2, 5);
+        if (Math.random() < 0.5) put(PAGE, x + 1, y + 2, w - 3, 3); // page edges
+        else put(GOLD, x + 3, y + 3, w - 10, 1); // title on the spine
+      }
+    });
+    return { img: [img], box: { x: left + 1, y: 1, w: right - left - 2, h: h - 1 } };
+  }
+
+  const cone = pixels([
+    "......kk......",
+    ".....kook.....",
+    ".....kook.....",
+    ".....kook.....",
+    "....kooook....",
+    "....kooook....",
+    "....kwwwwk....",
+    "...kwwwwwwk...",
+    "...kwwwwwwk...",
+    "...kooooook...",
+    "..kooooooook..",
+    "..kooooooook..",
+    "..kooooooook..",
+    ".kwwwwwwwwwwk.",
+    ".kwwwwwwwwwwk.",
+    ".kooooooooook.",
+    "kooooooooooook",
+    "kooooooooooook",
+    "kkkkkkkkkkkkkk",
+    "kooooooooooook",
+    "kkkkkkkkkkkkkk",
+  ]);
+
+  const coffee = pixels([
+    "....g...g.....",
+    ".....g...g....",
+    "....g...g.....",
+    ".....g...g....",
+    "..............",
+    ".kkkkkkkkkkkk.",
+    "kkkkkkkkkkkkkk",
+    "kwwwwwwwwwwwwk",
+    "kkkkkkkkkkkkkk",
+    ".kwwwwwwwwwwk.",
+    ".kwwwwwwwwwwk.",
+    ".kwwwwwwwwwwk.",
+    ".kcccccccccck.",
+    ".kcccccccccck.",
+    ".kcccbbbbccck.",
+    ".kccccbbcccck.",
+    "..kcccbbccck..",
+    "..kcccccccck..",
+    "..kwwwwwwwwk..",
+    "..kwwwwwwwwk..",
+    "..kwwwwwwwwk..",
+    "..kwwwwwwwwk..",
+    "..kwwwwwwwwk..",
+    "..kkkkkkkkkk..",
+  ]);
+
+  const kettlebell = pixels([
+    "......kkkkkk......",
+    ".....kiiiiiik.....",
+    "....kiikkkkiik....",
+    "....kik....kik....",
+    "....kik....kik....",
+    "....kik....kik....",
+    "...kkikkkkkkikk...",
+    "..kiiiiiiiiiiiik..",
+    ".kiihhiiiiiiiiiik.",
+    ".kihhiiiiiiiiiiik.",
+    "kiihiiiiiiiiiiiiik",
+    "kiihiiiiiiiiiiiiik",
+    "kiiiiiiiiiiiiiiiik",
+    "kiiiiiiiiiiiiiiiik",
+    "kiiiiiiiiiiiiiiiik",
+    ".kiiiiiiiiiiiiiik.",
+    ".kiiiiiiiiiiiiiik.",
+    "..kiiiiiiiiiiiik..",
+    "...kkiiiiiiiikk...",
+    ".....kkkkkkkk.....",
+  ]);
+
+  const deadline = pixels([
+    "..kk..........kk..",
+    "kkrrkk......kkrrkk",
+    "krrrrk.kkkk.krrrrk",
+    "krrrrkkrrrrkkrrrrk",
+    "...kkrrrrrrrrkk...",
+    "...krrwwkwwwrrk...",
+    "..krrwwwkwwwwrrk..",
+    ".krrwwwwkwwwwwrrk.",
+    ".krrwwwwkwwwwwrrk.",
+    ".krwwwwwkwwwwwwrk.",
+    ".krwwwwwkkkkwwwrk.",
+    ".krwwwwwwwwwwwwrk.",
+    ".krrwwwwwwwwwwrrk.",
+    ".krrwwwwwwwwwwrrk.",
+    "..krrwwwwwwwwrrk..",
+    "...krrwwwwwwrrk...",
+    "...kkrrrrrrrrkk...",
+    "...k.kkrrrrkk.k...",
+    "..k....kkkk....k..",
+  ]);
+
+  const planeUp = pixels([
+    "............kk..",
+    ".........kkkwk..",
+    "......kkkwwwwk..",
+    "...kkkwwwwwwwk..",
+    "kkkwwwwwwwwwwwkk",
+    "...kkkggggggggk.",
+    "......kkkggggk..",
+    ".........kkkk...",
+  ]);
+
+  const planeDown = pixels([
+    "................",
+    "..........kkkk..",
+    "......kkkkwwwk..",
+    "...kkkwwwwwwwk..",
+    "kkkwwwwwwwwwwwkk",
+    "...kkkggggggk...",
+    ".......kkkkk....",
+    "................",
+  ]);
+
+  /** The anatomy skeleton on its stand: every bone gets an ink outline, then is filled in. */
+  const skeleton = paint(17, 46, (put) => {
+    put(IRON, 8, 0, 1, 44);
+    put(INK, 3, 43, 11, 2);
+    put(INK, 2, 45, 3, 1);
+    put(INK, 12, 45, 3, 1);
+    const bones = [
+      [6, 2, 5, 5], [7, 7, 3, 2], [8, 10, 1, 2], [3, 12, 11, 1], [5, 14, 7, 1], [5, 16, 7, 1], [5, 18, 7, 1],
+      [6, 20, 5, 1], [8, 13, 1, 9], [5, 22, 7, 2], [3, 13, 1, 11], [13, 13, 1, 11], [6, 25, 1, 16], [10, 25, 1, 16],
+      [5, 41, 2, 1], [10, 41, 2, 1],
+    ];
+    bones.forEach(([x, y, w, h]) => put(INK, x - 1, y - 1, w + 2, h + 2));
+    bones.forEach(([x, y, w, h]) => put(BONE, x, y, w, h));
+    put(INK, 7, 4, 1, 2);
+    put(INK, 9, 4, 1, 2);
+    put(INK, 8, 8);
+  });
+
+  /** A treatment couch with a pillow. */
+  const plinth = paint(42, 22, (put) => {
+    put(INK, 2, 0, 9, 4);
+    put(WHITE, 3, 1, 7, 2);
+    put(INK, 0, 3, 42, 6);
+    put(TAPE, 1, 4, 40, 4);
+    put(TAPE_LIGHT, 1, 4, 40, 1);
+    put(INK, 1, 9, 40, 3);
+    put(IRON, 2, 10, 38, 1);
+    put(INK, 4, 12, 4, 8);
+    put(IRON, 5, 12, 2, 7);
+    put(INK, 34, 12, 4, 8);
+    put(IRON, 35, 12, 2, 7);
+    put(INK, 8, 15, 26, 1);
+    put(INK, 3, 20, 6, 2);
+    put(INK, 33, 20, 6, 2);
+  });
+
+  // Academia
+
+  /** An open laptop with an essay that's nearly due. */
+  const laptop = pixels([
+    "..kkkkkkkkkkkkkkkkkkkk..",
+    "..kiiiiiiiiiiiiiiiiiik..",
+    "..kiwwwwwwwwwwwwwwwwik..",
+    "..kiwkkkkkkkkwwwwwwwik..",
+    "..kiwwwwwwwwwwwwwwwwik..",
+    "..kiwhhhhhhhhhhhhhwwik..",
+    "..kiwhhhhhhhhhhhwwwwik..",
+    "..kiwhhhhhhhhhhhhhhwik..",
+    "..kiwhhhhhhhhhwwwwwwik..",
+    "..kiwwwwwwwwwwwwrrrwik..",
+    "..kiwwwwwwwwwwwwwwwwik..",
+    "..kiiiiiiiiiiiiiiiiiik..",
+    "..kkkkkkkkkkkkkkkkkkkk..",
+    ".kssssssssssssssssssssk.",
+    "kshshshshshshshshshshssk",
+    "kssssssssssssssssssssssk",
+    ".kkkkkkkkkkkkkkkkkkkkkk.",
+  ]);
+
+  /** The sign outside the exam hall. */
+  const exam = pixels([
+    ".kkkkkkkkkkkkkkkkkkkkkk.",
+    ".kwwwwwwwwwwwwwwwwwwwwk.",
+    ".kwwwwwwwwwwwwwwwwwwwwk.",
+    ".kwrrrwrwrwwrwwrwwwrwwk.",
+    ".kwrwwwrwrwrwrwrrwrrwwk.",
+    ".kwrrwwwrwwrrrwrwrwrwwk.",
+    ".kwrwwwrwrwrwrwrwwwrwwk.",
+    ".kwrrrwrwrwrwrwrwwwrwwk.",
+    ".kwwwwwwwwwwwwwwwwwwwwk.",
+    ".kwhhhhhhhhhhhhhhhhhhwk.",
+    ".kwwwwwwwwwwwwwwwwwwwwk.",
+    ".kwhhhhhhhhhhhhhwwwwwwk.",
+    ".kwwwwwwwwwwwwwwwwwwwwk.",
+    ".kkkkkkkkkkkkkkkkkkkkkk.",
+    "..kk................kk..",
+    "..kk................kk..",
+    ".kk..................kk.",
+    ".kk..................kk.",
+    ".kk..................kk.",
+    "kk....................kk",
+    "kk....................kk",
+    "kk....................kk",
+  ]);
+
+  // Physiotherapy
+
+  /** A gym ball for core work, lit from the top left. */
+  const gymBall = paint(22, 22, (put) => {
+    for (let y = 0; y < 22; y++) {
+      for (let x = 0; x < 22; x++) {
+        const d = Math.hypot(x - 10.5, y - 10.5);
+        if (d > 11) continue;
+        const light = Math.hypot(x - 7, y - 6);
+        put(d > 9.9 ? INK : light < 2.5 ? WHITE : light < 7 ? "#5fb592" : d > 8 && x + y > 24 ? "#1f6a4d" : GREEN, x, y);
+      }
+    }
+  });
+
+  const crutch = pixels([
+    ".kkkkkkkkk.",
+    "kgggggggggk",
+    ".kkkkkkkkk.",
+    ".kik...kik.",
+    ".kik...kik.",
+    ".kik...kik.",
+    ".kik...kik.",
+    ".kik...kik.",
+    ".kik...kik.",
+    ".kik...kik.",
+    "..kik.kik..",
+    "..kik.kik..",
+    "..kkkkkkk..",
+    "..kccccck..",
+    "..kkkkkkk..",
+    "..kik.kik..",
+    "..kik.kik..",
+    "..kik.kik..",
+    "..kik.kik..",
+    "..kik.kik..",
+    "...kikik...",
+    "...kikik...",
+    "....kik....",
+    "....kik....",
+    "....kik....",
+    "....kik....",
+    "....kik....",
+    "....kik....",
+    "....kik....",
+    "....kik....",
+    "....kik....",
+    "...kkkkk...",
+    "...kkkkk...",
+    "...kkkkk...",
+  ]);
+
+  /** Parallel bars for walking practice, standing on a mat. */
+  const parallelBars = paint(46, 22, (put) => {
+    put(INK, 0, 0, 46, 4);
+    put("#ccd3da", 1, 1, 44, 2);
+    for (const x of [3, 21, 39]) {
+      put(INK, x, 3, 4, 16);
+      put(IRON, x + 1, 4, 2, 15);
+    }
+    put(INK, 0, 18, 46, 4);
+    put(TAPE, 1, 19, 44, 2);
+  });
+
+  // Aged care
+
+  const walkingFrame = pixels([
+    "...kkkkkkkkkkkk...",
+    "...kiigggggggik...",
+    "...kkkkkkkkkkkk...",
+    "...kik......kik...",
+    "...kik......kik...",
+    "...kik......kik...",
+    "..kik........kik..",
+    "..kik........kik..",
+    "..kik........kik..",
+    "..kikkkkkkkkkkik..",
+    "..kiiiiiiiiiiiik..",
+    "..kikkkkkkkkkkik..",
+    ".kik..........kik.",
+    ".kik..........kik.",
+    ".kik..........kik.",
+    ".kik..........kik.",
+    ".kik..........kik.",
+    "kik............kik",
+    "kik............kik",
+    "kik............kik",
+    "kkkk...........kik",
+    "kiik...........kik",
+    "kiik..........kkkk",
+    ".kk...........kkkk",
+  ]);
+
+  const quadCane = pixels([
+    "...kkkkkkkk.",
+    "...kicccccck",
+    "...kikkkkkkk",
+    "...kik......",
+    "...kik......",
+    "...kik......",
+    "...kik......",
+    "...kik......",
+    "...kik......",
+    "...kik......",
+    "...kik......",
+    "...kik......",
+    "...kik......",
+    "...kik......",
+    "...kik......",
+    "...kik......",
+    "...kik......",
+    "...kik......",
+    "...kik......",
+    "...kik......",
+    "...kik......",
+    "..kkikk.....",
+    ".kkiiikkkkk.",
+    "kiiiiiiiiiik",
+    "kkkkkkkkkkkk",
+    "kik......kik",
+    "kik......kik",
+    "kkk......kkk",
+  ]);
+
+  /** A wheelchair, side on: the seat shows between the spokes. */
+  const wheelchair = paint(24, 24, (put) => {
+    put(INK, 16, 0, 8, 2);
+    put(INK, 16, 0, 4, 14);
+    put(TAPE, 17, 2, 2, 11);
+    put(INK, 3, 6, 15, 2);
+    put(INK, 3, 11, 16, 4);
+    put(TAPE, 4, 12, 14, 2);
+    put(INK, 3, 14, 2, 6);
+    put(INK, 0, 19, 5, 2);
+    for (let y = 6; y < 24; y++) {
+      for (let x = 3; x < 22; x++) {
+        const d = Math.hypot(x - 12, y - 15);
+        if (d > 8.5) continue;
+        if (d > 6.6) put(INK, x, y);
+        else if (d > 5.7) put("#8692a0", x, y);
+        else if (x === 12 || y === 15) put(IRON, x, y);
+      }
+    }
+    put(INK, 11, 14, 3, 3);
+    put(INK, 1, 21, 3, 3);
+  });
+
+  // Sports kit, scaled down from the sport/ pack into mj-sports.png: [x, y, w, h] for each frame.
+  // Balls have four quarter turns so they can roll; things in the air flip as they spin.
+  const SPORTS: Record<string, number[][]> = {
+    basketball: [[1, 1, 16, 16], [18, 1, 16, 16], [35, 1, 16, 16], [52, 1, 16, 16]],
+    football: [[69, 1, 15, 15], [85, 1, 15, 15], [101, 1, 15, 15], [117, 1, 15, 15]],
+    volleyball: [[133, 1, 16, 16], [150, 1, 16, 16], [167, 1, 16, 16], [184, 1, 16, 16]],
+    bowling: [[201, 1, 15, 15], [217, 1, 15, 15], [233, 1, 15, 15], [249, 1, 15, 15]],
+    glove: [[265, 1, 15, 23]],
+    racket: [[281, 1, 18, 26]],
+    bat: [[300, 1, 6, 36]],
+    baseball: [[307, 1, 10, 10], [318, 1, 10, 10]],
+    tennis: [[329, 1, 10, 10], [340, 1, 10, 10]],
+    rugby: [[351, 1, 18, 11], [370, 1, 18, 11]],
+  };
+  const sportsArt: Record<string, HTMLCanvasElement[]> = {};
+  const sportsAtlas = new Image();
+  sportsAtlas.addEventListener("load", () => {
+    for (const [name, frames] of Object.entries(SPORTS)) {
+      sportsArt[name] = frames.map(([x, y, w, h]) => {
+        const c = document.createElement("canvas");
+        c.width = w;
+        c.height = h;
+        c.getContext("2d")!.drawImage(sportsAtlas, x, y, w, h, 0, 0, w, h);
+        return c;
+      });
+    }
+  });
+  sportsAtlas.src = root.dataset.sports!;
+
+  const sport = (name: string, box: Rect) => ({
+    art: () => ({ img: sportsArt[name], box }),
+    ready: () => name in sportsArt,
+  });
+
+  const still = (img: HTMLCanvasElement, box: Rect): (() => Art) => {
+    const art = { img: [img], box };
+    return () => art;
+  };
+
+  // Small things can come in groups once the pace picks up.
+  const KINDS: Kind[] = [
+    // Academia
+    { name: "books", minGap: 120, maxGroup: 1, art: books },
+    { name: "coffee", minGap: 120, maxGroup: 2, art: still(coffee, { x: 1, y: 6, w: 12, h: 18 }) },
+    { name: "deadline", minGap: 120, maxGroup: 2, art: still(deadline, { x: 1, y: 3, w: 16, h: 16 }) },
+    { name: "laptop", minGap: 120, maxGroup: 1, art: still(laptop, { x: 1, y: 1, w: 22, h: 16 }) },
+    { name: "exam", minGap: 130, maxGroup: 1, art: still(exam, { x: 1, y: 1, w: 22, h: 21 }) },
+    {
+      name: "plane",
+      minGap: 150,
+      maxGroup: 1,
+      fly: true,
+      art: () => ({ img: [planeUp, planeDown], box: { x: 1, y: 1, w: 14, h: 6 } }),
+    },
+    // Physiotherapy
+    { name: "skeleton", minGap: 130, maxGroup: 1, art: still(skeleton, { x: 3, y: 2, w: 11, h: 44 }) },
+    { name: "plinth", minGap: 140, maxGroup: 1, art: still(plinth, { x: 1, y: 4, w: 40, h: 18 }) },
+    { name: "kettlebell", minGap: 120, maxGroup: 2, art: still(kettlebell, { x: 1, y: 2, w: 16, h: 18 }) },
+    { name: "cone", minGap: 120, maxGroup: 3, art: still(cone, { x: 2, y: 2, w: 10, h: 19 }) },
+    { name: "gymBall", minGap: 130, maxGroup: 1, art: still(gymBall, { x: 2, y: 2, w: 18, h: 20 }) },
+    { name: "crutches", minGap: 120, maxGroup: 2, art: still(crutch, { x: 1, y: 1, w: 9, h: 33 }) },
+    { name: "parallelBars", minGap: 140, maxGroup: 1, art: still(parallelBars, { x: 1, y: 1, w: 44, h: 21 }) },
+    // Aged care
+    { name: "walkingFrame", minGap: 120, maxGroup: 1, art: still(walkingFrame, { x: 1, y: 1, w: 16, h: 23 }) },
+    { name: "quadCane", minGap: 120, maxGroup: 2, art: still(quadCane, { x: 1, y: 1, w: 10, h: 27 }) },
+    { name: "wheelchair", minGap: 130, maxGroup: 1, art: still(wheelchair, { x: 1, y: 1, w: 22, h: 23 }) },
+    // Sport
+    { name: "basketball", minGap: 120, maxGroup: 2, roll: 1.5, ...sport("basketball", { x: 1, y: 1, w: 14, h: 14 }) },
+    { name: "football", minGap: 120, maxGroup: 2, roll: 1.5, ...sport("football", { x: 1, y: 1, w: 13, h: 13 }) },
+    { name: "volleyball", minGap: 120, maxGroup: 2, roll: 1.5, ...sport("volleyball", { x: 1, y: 1, w: 14, h: 14 }) },
+    { name: "bowling", minGap: 120, maxGroup: 1, roll: 2, ...sport("bowling", { x: 1, y: 1, w: 13, h: 13 }) },
+    { name: "glove", minGap: 120, maxGroup: 2, ...sport("glove", { x: 1, y: 1, w: 13, h: 22 }) },
+    { name: "racket", minGap: 120, maxGroup: 1, ...sport("racket", { x: 1, y: 1, w: 16, h: 25 }) },
+    { name: "bat", minGap: 120, maxGroup: 3, ...sport("bat", { x: 1, y: 1, w: 4, h: 35 }) },
+    { name: "baseball", minGap: 150, maxGroup: 1, fly: true, ...sport("baseball", { x: 1, y: 1, w: 8, h: 8 }) },
+    { name: "tennis", minGap: 150, maxGroup: 1, fly: true, ...sport("tennis", { x: 1, y: 1, w: 8, h: 8 }) },
+    { name: "rugby", minGap: 150, maxGroup: 1, fly: true, ...sport("rugby", { x: 1, y: 1, w: 16, h: 9 }) },
+  ];
+
+  /** What each module throws at Michael. The bonus round after graduation mixes everything. */
+  const POOLS = [
+    ["books", "coffee", "laptop", "skeleton"], // Anatomy
+    ["books", "coffee", "laptop", "deadline", "kettlebell"], // Physiology
+    ["basketball", "football", "racket", "bat", "cone", "kettlebell"], // Biomechanics
+    ["volleyball", "bowling", "glove", "gymBall", "crutches", "cone"], // Musculoskeletal rehab
+    ["walkingFrame", "quadCane", "wheelchair", "parallelBars", "gymBall", "plane"], // Neuro rehab
+    ["basketball", "football", "volleyball", "kettlebell", "cone", "tennis", "baseball", "rugby"], // Cardiorespiratory
+    ["plinth", "wheelchair", "walkingFrame", "crutches", "skeleton", "quadCane", "plane"], // Clinical placement
+    ["books", "laptop", "exam", "deadline", "coffee", "plane"], // Dissertation
+  ];
+  /** How high things fly above the ground: jump the low two, walk under the top one. */
+  const FLIGHT_HEIGHTS = [6, 26, 54];
+
+  // ---------- Scenery ----------
+
+  const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const theme = (skyTop: string, skyBottom: string, far: string, window: string, ground: string, line: string, night: number): Theme => ({
+    skyTop: hex(skyTop), skyBottom: hex(skyBottom), far: hex(far), window: hex(window), ground: hex(ground), line: hex(line), night,
+  });
+  // Morning, afternoon, sunset, a late night of study, then graduation day.
+  const THEMES = [
+    theme("#dbe8f3", "#f2f4f3", "#cdd8e1", "#e8eef3", "#e6ebe8", INK, 0),
+    theme("#f1e2c8", "#f7f0e4", "#e0d1ba", "#efe5d6", "#ebe5da", INK, 0),
+    theme("#e7a1b3", "#f8dbc6", "#c98fa1", "#f3cbb8", "#e9d9d3", INK, 0),
+    theme("#0f1724", "#25334b", "#1b2537", "#f1c95c", "#1c2533", "#c9d3de", 1),
+    theme("#cfe4f7", "#fdf3e1", "#c4d4e4", "#eaf1f7", "#e8ece7", INK, 0),
+  ];
+  /** Which sky goes with each number of modules passed (0 to 8). */
+  const SKY_FOR_MODULE = [0, 0, 1, 1, 2, 3, 3, 3, 4];
+
+  const SKYLINE_W = 720;
+  const skyline: { x: number; w: number; h: number; type: "block" | "tower" | "hospital" }[] = [];
+  for (let x = 0, i = 0; x < SKYLINE_W - 40; i++) {
+    const type = i === 2 ? "tower" : i === 6 ? "hospital" : "block";
+    const w = type === "tower" ? 20 : 30 + Math.floor(Math.random() * 40);
+    const h = type === "tower" ? 78 : type === "hospital" ? 54 : 22 + Math.floor(Math.random() * 36);
+    skyline.push({ x, w, h, type });
+    x += w + 4 + Math.floor(Math.random() * 18);
+  }
+  const clouds = Array.from({ length: 5 }, (_, i) => ({ x: i * 180 + Math.random() * 90, y: 14 + Math.random() * 50, w: 22 + Math.random() * 26 }));
+  const stars = Array.from({ length: 60 }, () => ({ x: Math.random() * 640, y: Math.random() * 110 }));
+  const pebbles = Array.from({ length: 24 }, () => ({ x: Math.random() * 640, y: GROUND + 3 + Math.floor(Math.random() * 20), w: 1 + Math.floor(Math.random() * 3) }));
+
+  // ---------- Game state ----------
+
+  type State = "ready" | "running" | "paused" | "over";
+  let state: State = "ready";
+  let viewW = 640;
+  let speed = START_SPEED;
+  let distance = 0;
+  let score = 0;
+  let modulesPassed = 0;
+  let graduated = false;
+  let newBest = false;
+  let overAt = 0;
+  let clearMs = FIRST_OBSTACLE_MS;
+  let obstacles: Obstacle[] = [];
+  let recent: Kind[] = [];
+  let bits: Bit[] = [];
+  let themeFrom = THEMES[0];
+  let themeTo = THEMES[0];
+  let themeMix = 1;
+  const mj = { y: GROUND, vy: 0, airborne: false, held: false, dropping: false, reachedMin: false, step: 0, cheer: 0 };
+
+  let best = 0;
+  let muted = false;
+  try {
+    best = Number(localStorage.getItem(BEST_KEY)) || 0;
+    muted = localStorage.getItem(MUTE_KEY) === "1";
+  } catch {
+    // Storage can be blocked (private windows); the game still works without it.
+  }
+
+  const atlas = new Image();
+  atlas.addEventListener("load", () => draw());
+  atlas.src = root.dataset.sprites!;
+
+  // ---------- Sound: "Hee-hee!" when Michael jumps, "Ow!" when he falls ----------
+
+  type Sound = { file: Promise<ArrayBuffer | null>; buffer: AudioBuffer | null };
+  const loadSound = (src: string): Sound => ({
+    file: fetch(src)
+      .then((response) => (response.ok ? response.arrayBuffer() : null))
+      .catch(() => null),
+    buffer: null,
+  });
+  const hehe = loadSound(root.dataset.jumpSound!);
+  const ow = loadSound(root.dataset.crashSound!);
+
+  let audio: AudioContext | null = null;
+
+  /** Browsers only allow sound after a tap or key press, so this runs on the first one. */
+  function unlockSound() {
+    if (audio) {
+      if (audio.state === "suspended") audio.resume();
+      return;
+    }
+    const Context = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Context) return;
+    audio = new Context();
+    for (const sound of [hehe, ow]) {
+      sound.file
+        .then((data) => (data ? audio!.decodeAudioData(data) : null))
+        .then((buffer) => (sound.buffer = buffer))
+        .catch(() => {});
+    }
+  }
+
+  let jumpHehe: AudioBufferSourceNode | null = null;
+
+  function play(sound: Sound, volume = 0.8, delay = 0) {
+    if (muted || !audio || !sound.buffer) return null;
+    const source = audio.createBufferSource();
+    source.buffer = sound.buffer;
+    const gain = audio.createGain();
+    gain.gain.value = volume;
+    source.connect(gain).connect(audio.destination);
+    source.start(audio.currentTime + delay);
+    return source;
+  }
+
+  // ---------- Controls ----------
+
+  function press() {
+    unlockSound();
+    if (state === "ready") start();
+    else if (state === "over") {
+      if (performance.now() - overAt > 500) start();
+    } else if (state === "paused") resume();
+    else jump();
+  }
+
+  function jump() {
+    mj.held = true;
+    if (mj.airborne) return;
+    mj.airborne = true;
+    mj.reachedMin = false;
+    mj.cheer = 0;
+    mj.vy = -(JUMP_SPEED + speed / 10);
+    // A new jump cuts off the last jump's "Hee-hee!" so quick jumps don't pile up.
+    jumpHehe?.stop();
+    jumpHehe = play(hehe, 0.7);
+  }
+
+  function release() {
+    mj.held = false;
+  }
+
+  function drop() {
+    if (state !== "running" || !mj.airborne) return;
+    mj.dropping = true;
+    mj.vy = Math.max(mj.vy, 1);
+  }
+
+  const JUMP_KEYS = ["Space", "ArrowUp", "KeyW"];
+  const DROP_KEYS = ["ArrowDown", "KeyS"];
+
+  document.addEventListener("keydown", (event) => {
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    // Leave buttons and links alone unless a run is under way, so Space and Enter still work on them.
+    const target = event.target instanceof Element ? event.target : null;
+    if (state !== "running" && target?.closest("button, a, input, textarea, select")) return;
+    if (JUMP_KEYS.includes(event.code)) {
+      event.preventDefault();
+      if (!event.repeat) press();
+    } else if (DROP_KEYS.includes(event.code) && state === "running") {
+      event.preventDefault();
+      drop();
+    } else if (event.code === "KeyP") {
+      if (state === "running") pause();
+      else if (state === "paused") resume();
+    } else if (event.code === "KeyM") {
+      toggleMute();
+    }
+  });
+
+  document.addEventListener("keyup", (event) => {
+    if (JUMP_KEYS.includes(event.code)) {
+      if (state === "running") event.preventDefault();
+      release();
+    } else if (DROP_KEYS.includes(event.code)) {
+      mj.dropping = false;
+    }
+  });
+
+  stage.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || (event.target as HTMLElement).closest("button")) return;
+    event.preventDefault();
+    press();
+  });
+  window.addEventListener("pointerup", release);
+  window.addEventListener("pointercancel", release);
+  // Stop a long press from opening the phone's context menu.
+  stage.addEventListener("contextmenu", (event) => event.preventDefault());
+
+  overlayButton.addEventListener("click", press);
+  muteButton.addEventListener("click", () => {
+    toggleMute();
+    if (state === "running") root.focus({ preventScroll: true });
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) pause();
+  });
+
+  function toggleMute() {
+    muted = !muted;
+    try {
+      localStorage.setItem(MUTE_KEY, muted ? "1" : "0");
+    } catch {}
+    renderMute();
+  }
+
+  function renderMute() {
+    muteButton.textContent = muted ? "Sound: off" : "Sound: on";
+  }
+
+  // ---------- Game flow ----------
+
+  function start() {
+    state = "running";
+    speed = START_SPEED;
+    distance = 0;
+    score = 0;
+    modulesPassed = 0;
+    graduated = false;
+    newBest = false;
+    clearMs = FIRST_OBSTACLE_MS;
+    obstacles = [];
+    recent = [];
+    bits = [];
+    Object.assign(mj, { y: GROUND, vy: 0, airborne: false, held: false, dropping: false, step: 0, cheer: 0 });
+    themeFrom = themeTo = THEMES[0];
+    themeMix = 1;
+    banner.classList.add("opacity-0");
+    overlay.hidden = true;
+    root.focus({ preventScroll: true });
+    renderHud();
+    loop();
+  }
+
+  function pause() {
+    if (state !== "running") return;
+    state = "paused";
+    release();
+    showOverlay("Paused", "Your studies will wait for you.", "Keep going");
+  }
+
+  function resume() {
+    state = "running";
+    overlay.hidden = true;
+    root.focus({ preventScroll: true });
+    loop();
+  }
+
+  function crash() {
+    state = "over";
+    overAt = performance.now();
+    jumpHehe?.stop();
+    play(ow, 1);
+    navigator.vibrate?.(80);
+    if (score > best) {
+      best = score;
+      newBest = true;
+      try {
+        localStorage.setItem(BEST_KEY, String(best));
+      } catch {}
+    }
+    renderHud();
+    const reached = graduated
+      ? "You earned your Masters"
+      : `You reached Module ${modulesPassed + 1}: ${MODULES[modulesPassed]}`;
+    showOverlay(
+      graduated ? "Ow! Still a graduate." : "Ow! Exam failed.",
+      `${reached}. Score ${score}.${newBest ? " New best!" : ""}`,
+      "Try again",
+    );
+  }
+
+  function showOverlay(title: string, text: string, button: string) {
+    overlayTitle.textContent = title;
+    overlayText.textContent = text;
+    overlayButton.textContent = button;
+    overlay.hidden = false;
+    overlayButton.focus({ preventScroll: true });
+  }
+
+  let bannerTimer = 0;
+  function announce(text: string) {
+    banner.textContent = text;
+    banner.classList.remove("opacity-0");
+    clearTimeout(bannerTimer);
+    bannerTimer = window.setTimeout(() => banner.classList.add("opacity-0"), 2400);
+  }
+
+  function passModule() {
+    themeFrom = currentTheme();
+    themeTo = THEMES[SKY_FOR_MODULE[modulesPassed]];
+    themeMix = 0;
+    if (modulesPassed < MODULES.length) {
+      announce(`Module passed: ${MODULES[modulesPassed - 1]}`);
+      play(hehe, 0.8);
+      return;
+    }
+    // Graduation: the obstacles burst into confetti and Michael strikes a pose.
+    graduated = true;
+    for (const o of obstacles) burst(o.x + o.w / 2, o.y + 8, 16);
+    for (let i = 0; i < 6; i++) burst(40 + Math.random() * (viewW - 80), 10 + Math.random() * 40, 18);
+    obstacles = [];
+    clearMs = 2600;
+    if (!mj.airborne) mj.cheer = 80;
+    announce("Masters in Physiotherapy earned!");
+    play(hehe, 0.8);
+    play(hehe, 0.9, 0.7);
+  }
+
+  function burst(x: number, y: number, count: number) {
+    const colours = [TAPE, PINK, GOLD, GREEN, WHITE];
+    for (let i = 0; i < count; i++) {
+      bits.push({
+        x, y,
+        vx: (Math.random() - 0.5) * 5,
+        vy: -1 - Math.random() * 3,
+        colour: colours[i % colours.length],
+        life: 80 + Math.random() * 60,
+      });
+    }
+  }
+
+  // ---------- Update ----------
+
+  let lastTime = 0;
+  let frameRequest = 0;
+
+  function loop() {
+    if (frameRequest) return;
+    lastTime = performance.now();
+    frameRequest = requestAnimationFrame(tick);
+  }
+
+  function tick(now: number) {
+    frameRequest = 0;
+    // dt counts 60ths of a second, capped so a stalled tab can't teleport anything.
+    // The first frame's timestamp can be a little before lastTime, hence the floor of 0.
+    const dt = Math.min(Math.max(now - lastTime, 0) / (1000 / 60), 3);
+    lastTime = now;
+    if (state === "running") update(dt);
+    draw();
+    if (state === "running") frameRequest = requestAnimationFrame(tick);
+  }
+
+  function update(dt: number) {
+    speed = Math.min(MAX_SPEED, speed + ACCELERATION * dt);
+    distance += speed * dt;
+    themeMix = Math.min(1, themeMix + dt / 120);
+
+    const newScore = Math.floor(distance * 0.025);
+    if (newScore !== score) {
+      score = newScore;
+      const passed = Math.min(MODULES.length, Math.floor(score / POINTS_PER_MODULE));
+      if (passed > modulesPassed) {
+        modulesPassed = passed;
+        passModule();
+      }
+      renderHud();
+    }
+
+    // Michael
+    mj.step += dt * (0.1 + speed * 0.022);
+    if (mj.cheer > 0) mj.cheer -= dt;
+    if (mj.airborne) {
+      mj.vy += (mj.dropping ? GRAVITY * 3 : GRAVITY) * dt;
+      mj.y += mj.vy * dt;
+      if (GROUND - mj.y > MIN_JUMP) mj.reachedMin = true;
+      if (!mj.held && mj.reachedMin && mj.vy < SHORT_HOP_SPEED) mj.vy = SHORT_HOP_SPEED;
+      if (mj.y >= GROUND) Object.assign(mj, { y: GROUND, vy: 0, airborne: false, dropping: false });
+    }
+
+    // Obstacles
+    for (const o of obstacles) {
+      o.x -= (speed + o.drift) * dt;
+      o.clock += dt;
+    }
+    obstacles = obstacles.filter((o) => o.x + o.w > -4);
+    if (clearMs > 0) clearMs -= dt * (1000 / 60);
+    else {
+      const last = obstacles[obstacles.length - 1];
+      if (!last || last.x + last.w + last.gap < viewW) spawn();
+    }
+
+    // Confetti
+    for (const b of bits) {
+      b.vy += 0.12 * dt;
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.life -= dt;
+    }
+    bits = bits.filter((b) => b.life > 0 && b.y < VIEW_H);
+
+    const body = hitbox();
+    for (const o of obstacles) {
+      if (obstacleBoxes(o).some((box) => overlaps(body, box))) {
+        crash();
+        return;
+      }
+    }
+  }
+
+  function spawn() {
+    // Like the dinosaur game: never the same obstacle three times running.
+    const twice = recent.length === 2 && recent[0] === recent[1] ? recent[0] : null;
+    const pool = graduated ? KINDS : KINDS.filter((k) => POOLS[modulesPassed].includes(k.name));
+    const options = pool.filter((k) => k !== twice && (k.ready?.() ?? true));
+    const kind = options[Math.floor(Math.random() * options.length)] ?? KINDS[0];
+    recent = [kind, ...recent].slice(0, 2);
+    const art = kind.art();
+    const size = art.img[0];
+    const group = speed > 7 ? 1 + Math.floor(Math.random() * kind.maxGroup) : 1;
+    const w = group * size.width + (group - 1);
+    const lift = kind.fly ? FLIGHT_HEIGHTS[Math.floor(Math.random() * FLIGHT_HEIGHTS.length)] : 0;
+    const minGap = Math.round(w * speed + kind.minGap * 0.6);
+    const drift = kind.fly ? (Math.random() < 0.5 ? 0.8 : -0.8) : (kind.roll ?? 0);
+    const last = obstacles[obstacles.length - 1];
+    // Things that move by themselves close the gap on their way to Michael, so they start further out.
+    const travel = (viewW - MJ_X) / speed;
+    let x = viewW + 2 + Math.max(0, drift) * travel + Math.max(0, -(last?.drift ?? 0)) * travel;
+    // Something high enough to walk under must sit beyond a full jump over the last obstacle,
+    // or jumping that obstacle would carry Michael straight into it.
+    if (last && lift === FLIGHT_HEIGHTS[FLIGHT_HEIGHTS.length - 1]) {
+      const airtime = (2 * (JUMP_SPEED + speed / 10)) / GRAVITY;
+      x = Math.max(x, last.x + last.w + airtime * (speed + 0.8) + 60);
+    }
+    obstacles.push({
+      kind, art, group, w, x, drift,
+      y: GROUND + 1 - size.height - lift,
+      gap: minGap + Math.floor(Math.random() * minGap * 0.5),
+      clock: 0,
+    });
+  }
+
+  function obstacleBoxes(o: Obstacle): Rect[] {
+    const { box } = o.art;
+    const step = o.art.img[0].width + 1;
+    return Array.from({ length: o.group }, (_, i) => ({ x: o.x + i * step + box.x, y: o.y + box.y, w: box.w, h: box.h }));
+  }
+
+  const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+  /** Which frame Michael shows right now, and where its top-left corner goes. */
+  function pose() {
+    if (state === "over") return { f: FALLEN, left: MJ_X - FALLEN.hx, top: GROUND + 1 - FALLEN.h };
+    let f: Frame;
+    let top: number;
+    if (mj.airborne) {
+      f = mj.vy < -3 ? TAKEOFF : TUCK;
+      top = f === TAKEOFF ? mj.y + 1 - f.h : mj.y - 39;
+    } else {
+      f = mj.cheer > 0 ? CHEER : state === "ready" ? WALK[0] : WALK[Math.floor(mj.step) % WALK.length];
+      top = GROUND + 1 - f.h;
+    }
+    return { f, left: MJ_X - f.hx, top: Math.round(top) };
+  }
+
+  /** A little smaller than the picture, so near misses feel fair. */
+  function hitbox(): Rect {
+    const { f, left, top } = pose();
+    return { x: left + 3, y: top + 3, w: f.w - 6, h: f.h - 4 };
+  }
+
+  // ---------- Drawing ----------
+
+  // Everything is drawn at game size into `view`, then scaled up in one go so the pixels stay square and sharp.
+  const view = document.createElement("canvas");
+  view.height = VIEW_H;
+  const g = view.getContext("2d")!;
+
+  const mix = (a: number[], b: number[], t: number) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+  const rgb = (c: number[]) => `rgb(${c[0]} ${c[1]} ${c[2]})`;
+
+  function currentTheme(): Theme {
+    const t = themeMix;
+    const a = themeFrom;
+    const b = themeTo;
+    return {
+      skyTop: mix(a.skyTop, b.skyTop, t), skyBottom: mix(a.skyBottom, b.skyBottom, t), far: mix(a.far, b.far, t),
+      window: mix(a.window, b.window, t), ground: mix(a.ground, b.ground, t), line: mix(a.line, b.line, t),
+      night: a.night + (b.night - a.night) * t,
+    };
+  }
+
+  function rect(colour: string, x: number, y: number, w = 1, h = 1) {
+    g.fillStyle = colour;
+    g.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+  }
+
+  /** Wrap a scrolling position into a repeating strip of the given width. */
+  const wrap = (x: number, width: number) => ((x % width) + width) % width;
+
+  function draw() {
+    const t = currentTheme();
+    const sky = g.createLinearGradient(0, 0, 0, GROUND);
+    sky.addColorStop(0, rgb(t.skyTop));
+    sky.addColorStop(1, rgb(t.skyBottom));
+    g.fillStyle = sky;
+    g.fillRect(0, 0, viewW, VIEW_H);
+
+    // Stars and moon at night, clouds by day. Distant things scroll slower.
+    if (t.night > 0) {
+      g.globalAlpha = t.night;
+      for (const s of stars) rect(WHITE, wrap(s.x - distance * 0.03, 640), s.y);
+      const mx = viewW - 96;
+      for (let dy = -7; dy <= 7; dy++) {
+        const half = Math.round(Math.sqrt(49 - dy * dy));
+        rect("#f4ecd0", mx - half, 30 + dy, half * 2, 1);
+      }
+      for (let dy = -6; dy <= 6; dy++) {
+        const half = Math.round(Math.sqrt(36 - dy * dy));
+        rect(rgb(t.skyTop), mx + 3 - half, 28 + dy, half * 2, 1);
+      }
+      g.globalAlpha = 1;
+    }
+    if (t.night < 1) {
+      g.globalAlpha = 0.85 * (1 - t.night);
+      for (const c of clouds) {
+        const x = wrap(c.x - distance * 0.12, 900) - 60;
+        rect(WHITE, x, c.y, c.w, 4);
+        rect(WHITE, x + c.w * 0.2, c.y - 3, c.w * 0.45, 3);
+        rect(WHITE, x + c.w * 0.5, c.y - 5, c.w * 0.25, 2);
+      }
+      g.globalAlpha = 1;
+    }
+
+    // Campus skyline: lecture blocks, a clock tower and the teaching hospital.
+    const far = rgb(t.far);
+    const lit = rgb(t.window);
+    const shift = wrap(distance * 0.3, SKYLINE_W);
+    for (let rep = 0; rep < 3; rep++) {
+      for (const b of skyline) {
+        const x = Math.round(b.x + rep * SKYLINE_W - shift);
+        if (x > viewW || x + b.w < 0) continue;
+        const top = GROUND - b.h;
+        rect(far, x, top, b.w, b.h);
+        if (b.type === "tower") {
+          // Pointed roof, spire and clock face.
+          for (let i = 0; i < 10; i++) rect(far, x + i, top - 1 - i, b.w - i * 2, 1);
+          rect(far, x + 9, top - 15, 2, 5);
+          rect(lit, x + 6, top + 6, 8, 8);
+          rect(far, x + 9, top + 7, 1, 4);
+          rect(far, x + 9, top + 10, 3, 1);
+        } else if (b.type === "hospital") {
+          rect(PINK, x + b.w / 2 - 1, top - 9, 3, 9);
+          rect(PINK, x + b.w / 2 - 4, top - 6, 9, 3);
+        }
+        for (let wy = top + 5; wy < GROUND - 6; wy += 7) {
+          for (let wx = x + 4; wx < x + b.w - 5; wx += 6) {
+            if (b.type === "tower" && wy < top + 16) continue;
+            rect(lit, wx, wy, 2, 3);
+          }
+        }
+      }
+    }
+
+    // Ground
+    rect(rgb(t.ground), 0, GROUND + 1, viewW, VIEW_H - GROUND - 1);
+    rect(rgb(t.line), 0, GROUND, viewW, 1);
+    g.globalAlpha = 0.35;
+    for (const p of pebbles) rect(rgb(t.line), wrap(p.x - distance, 640), p.y, p.w, 1);
+    g.globalAlpha = 1;
+
+    for (const o of obstacles) {
+      const img = o.art.img[Math.floor(o.clock / 10) % o.art.img.length];
+      for (let i = 0; i < o.group; i++) g.drawImage(img, Math.round(o.x + i * (img.width + 1)), Math.round(o.y));
+    }
+
+    if (atlas.complete && atlas.naturalWidth) {
+      const { f, left, top } = pose();
+      g.drawImage(atlas, f.x, f.y, f.w, f.h, left, top, f.w, f.h);
+      if (graduated) {
+        // He earned the cap. When he falls, it lands beside him.
+        if (state === "over") drawCap(left + f.w + 8, GROUND - 2);
+        else drawCap(left + f.hx, top + f.hy);
+      }
+    }
+
+    for (const b of bits) rect(b.colour, b.x, b.y, 2, Math.floor(b.life / 5) % 2 ? 2 : 1);
+
+    screen.imageSmoothingEnabled = false;
+    screen.drawImage(view, 0, 0, canvas.width, canvas.height);
+  }
+
+  /** A mortarboard sitting on top of the hat at (x, top). */
+  function drawCap(x: number, top: number) {
+    rect(INK, x - 3, top - 2, 7, 3);
+    rect(INK, x - 7, top - 4, 15, 2);
+    rect(GOLD, x, top - 5);
+    rect(GOLD, x + 7, top - 3, 1, 5);
+    rect(GOLD, x + 6, top + 2, 2, 1);
+  }
+
+  // ---------- Score panel ----------
+
+  function renderHud() {
+    moduleLabel.textContent = graduated
+      ? "Masters earned! Bonus round"
+      : `Module ${modulesPassed + 1} of ${MODULES.length}: ${MODULES[modulesPassed]}`;
+    scoreLabel.textContent = String(score);
+    bestLabel.textContent = String(best);
+    segments.forEach((segment, i) => {
+      const filled = Math.min(1, Math.max(0, (score - i * POINTS_PER_MODULE) / POINTS_PER_MODULE));
+      segment.style.width = `${filled * 100}%`;
+    });
+  }
+
+  // ---------- Sizing ----------
+
+  let sizedFor = "";
+  function resize() {
+    const cssW = stage.clientWidth;
+    const ratio = Math.min(window.devicePixelRatio || 1, 3);
+    const key = `${cssW}x${ratio}`;
+    if (!cssW || key === sizedFor) return;
+    sizedFor = key;
+    // Phones get a narrower view so Michael isn't tiny.
+    viewW = cssW < 560 ? 480 : 640;
+    view.width = viewW;
+    canvas.style.aspectRatio = `${viewW} / ${VIEW_H}`;
+    canvas.width = Math.round(cssW * ratio);
+    canvas.height = Math.round(((cssW * VIEW_H) / viewW) * ratio);
+    draw();
+  }
+
+  new ResizeObserver(resize).observe(stage);
+  renderMute();
+  renderHud();
+  resize();
+</script>
