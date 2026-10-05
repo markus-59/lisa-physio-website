@@ -27,6 +27,31 @@
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-tape;
   }
+
+  /* Heading scale, sized against the sketch: H1 and H2 close together, H4 clearly smaller. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display leading-[1.05] font-extrabold tracking-tight text-ink;
+    text-wrap: balance;
+  }
+
+  h1 {
+    @apply text-4xl md:text-5xl;
+  }
+
+  h2 {
+    @apply text-[2rem] md:text-[2.5rem];
+  }
+
+  h3 {
+    @apply text-[1.75rem] md:text-[2rem];
+  }
+
+  h4 {
+    @apply text-2xl md:text-[1.625rem];
+  }
 }
 
 /* Smoothly open and close framework panels where the browser supports it. */

@@ -1,67 +1,75 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-import Placeholder from "../components/Placeholder.astro";
 import RehabPhoto from "../components/RehabPhoto.astro";
 import { course, scopeOfPractice, siteSubtitle } from "../data/site";
 
 const modules = course.slice(1);
-const eyebrow = "text-xs font-bold tracking-[0.18em] text-tape uppercase";
+const label = "font-sans text-xs font-bold tracking-[0.18em] text-tape uppercase";
 ---
 
 <BaseLayout>
-  <h1 class="mb-14 lg:mb-20">
-    <span class="block font-display text-6xl leading-[0.88] font-black tracking-tight uppercase sm:text-7xl lg:text-8xl">
-      The Mental Marathon<span class="text-pink">:</span>
-    </span>
-    <span class="mt-5 block max-w-2xl font-serif text-2xl leading-snug font-normal text-ink/85 italic sm:text-3xl">
-      {siteSubtitle}
-    </span>
+  <!-- As sketched: the subtitle runs on from the title, in italics. -->
+  <h1 class="mb-12 lg:mb-16">
+    The Mental Marathon<span class="text-pink">:</span>{" "}
+    <em class="font-serif text-[0.7em] font-normal tracking-normal text-ink/85">{siteSubtitle}</em>
   </h1>
 
-  <div class="max-w-prose space-y-12">
-    <section class="space-y-3">
-      <h2 class={eyebrow}>What this is</h2>
-      <Placeholder>Paragraph: what this site is, and who it's for.</Placeholder>
+  <div class="max-w-prose space-y-10">
+    <section class="space-y-2">
+      <p class={label}>What this is</p>
+      <p>
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
+        magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+        consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+      </p>
     </section>
 
-    <section class="space-y-3">
-      <h2 class={eyebrow}>Why it matters</h2>
-      <Placeholder>Paragraph: why the psychology of recovery matters.</Placeholder>
+    <section class="space-y-2">
+      <p class={label}>Why it matters</p>
+      <p>
+        Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem
+        aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo
+        enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit.
+      </p>
     </section>
   </div>
 
-  <section class="mt-12 grid items-start gap-8 md:grid-cols-[minmax(0,1fr)_15rem] lg:gap-12">
-    <div class="max-w-prose space-y-3">
-      <h2 class={eyebrow}>My rehab</h2>
-      <Placeholder>Paragraph: your own rehab story, in brief.</Placeholder>
+  <section class="mt-10 grid items-start gap-8 md:grid-cols-[minmax(0,1fr)_14rem] lg:gap-12">
+    <div class="max-w-prose space-y-2">
+      <p class={label}>My rehab</p>
+      <p>
+        Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+        Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam
+        eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
+      </p>
     </div>
-    <RehabPhoto class="max-w-60 md:max-w-none" />
+    <RehabPhoto class="max-w-56 md:max-w-none" />
   </section>
 
-  <section class="mt-20" aria-labelledby="modules-heading">
-    <h2 id="modules-heading" class={eyebrow}>The modules</h2>
+  <section class="mt-16" aria-label="Modules">
+    <p class={label}>The modules</p>
 
     <!-- Same route as the sidebar: one stop per module. -->
-    <ol class="relative mt-6 max-w-2xl">
+    <ol class="relative mt-5 max-w-2xl">
       {
         modules.map((item, i) => (
-          <li class="relative pb-5 pl-16">
+          <li class="relative pb-4 pl-14">
             {i < modules.length - 1 && (
-              <span aria-hidden="true" class="absolute top-12 bottom-0 left-[21px] border-l-2 border-dashed border-tape/35" />
+              <span aria-hidden="true" class="absolute top-11 bottom-0 left-[19px] border-l-2 border-dashed border-tape/35" />
             )}
             <span
               aria-hidden="true"
-              class="absolute top-3 left-0 flex size-11 items-center justify-center rounded-full bg-tape font-display text-2xl font-black text-white"
+              class="absolute top-3 left-0 flex size-10 items-center justify-center rounded-full bg-tape font-display text-xl font-black text-white"
             >
               {i + 1}
             </span>
             <a
               href={item.href}
-              class="group flex items-center justify-between gap-4 rounded-xl border border-line bg-white px-5 py-4 shadow-sm transition-colors hover:border-tape"
+              class="group flex items-center justify-between gap-4 rounded-xl border border-line bg-white px-5 py-3.5 shadow-sm transition-colors hover:border-tape"
             >
               <span>
                 <span class="block text-xs font-bold tracking-[0.16em] text-muted uppercase">{item.eyebrow}</span>
-                <span class="block font-display text-3xl leading-tight font-extrabold uppercase group-hover:text-tape-deep">
+                <span class="block font-display text-2xl leading-tight font-extrabold group-hover:text-tape-deep">
                   {item.label}
                 </span>
               </span>
@@ -74,11 +82,11 @@ const eyebrow = "text-xs font-bold tracking-[0.18em] text-tape uppercase";
 
     <a
       href={scopeOfPractice.href}
-      class="group mt-3 flex max-w-2xl items-center justify-between gap-4 rounded-xl border border-line bg-ink px-5 py-4 text-white transition-colors hover:bg-tape-deep"
+      class="group mt-2 flex max-w-2xl items-center justify-between gap-4 rounded-xl bg-ink px-5 py-3.5 text-white transition-colors hover:bg-tape-deep"
     >
       <span>
         <span class="block text-xs font-bold tracking-[0.16em] text-white/70 uppercase">Guide</span>
-        <span class="block font-display text-3xl leading-tight font-extrabold uppercase">{scopeOfPractice.label}</span>
+        <span class="block font-display text-2xl leading-tight font-extrabold">{scopeOfPractice.label}</span>
       </span>
       <span aria-hidden="true" class="text-2xl transition-transform group-hover:translate-x-1">→</span>
     </a>
