@@ -1,0 +1,205 @@
+---
+// Design option 3 — "Calm Clinic": soft and reassuring, like a wellbeing app. Rounded cards, pastel tiles, a progress ring.
+import "../../styles/global.css";
+import { course, extras } from "../../data/site";
+
+const activeIndex = 1;
+const moduleCount = course.length - 1;
+const ring = 2 * Math.PI * 42; // circumference of the progress ring
+
+const frameworks = [
+  {
+    title: "Cognitive-behavioural model of fatigue",
+    what: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio praesent libero, sed cursus ante dapibus diam.",
+    how: "Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum. Praesent mauris fusce nec tellus sed augue semper porta.",
+    relation: "Mauris massa. Vestibulum lacinia arcu eget nulla. Class aptent taciti sociosqu ad litora torquent per conubia nostra.",
+  },
+  {
+    title: "Central governor model",
+    what: "Curabitur sodales ligula in libero. Sed dignissim lacinia nunc. Curabitur tortor pellentesque nibh aenean quam.",
+    how: "In scelerisque sem at dolor. Maecenas mattis. Sed convallis tristique sem. Proin ut ligula vel nunc egestas porttitor.",
+    relation: "Morbi lectus risus, iaculis vel, suscipit quis, luctus non, massa. Fusce ac turpis quis ligula lacinia aliquet.",
+  },
+  {
+    title: "Energy envelope theory",
+    what: "Mauris ipsum. Nulla metus metus, ullamcorper vel, tincidunt sed, euismod in, nibh. Quisque volutpat condimentum velit.",
+    how: "Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Nam nec ante.",
+    relation: "Sed lacinia, urna non tincidunt mattis, tortor neque adipiscing diam, a cursus ipsum ante quis turpis.",
+  },
+];
+
+const strategies = [
+  { title: "Lorem ipsum dolor", text: "Nulla facilisi. Ut fringilla. Suspendisse potenti. Nunc feugiat mi a tellus consequat imperdiet." },
+  { title: "Sit amet consectetur", text: "Vestibulum sapien. Proin quam. Etiam ultrices. Suspendisse in justo eu magna luctus suscipit." },
+  { title: "Adipiscing elit sed", text: "Sed lectus. Integer euismod lacus luctus magna. Quisque cursus, metus vitae pharetra auctor." },
+];
+
+const tiles = ["bg-[#ECE6F8]", "bg-[#D9F2E8]", "bg-[#FFE6D9]"];
+---
+
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Option 3: Calm Clinic · The Mental Marathon</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600&display=swap" rel="stylesheet" />
+    <style is:global>
+      :root {
+        --f-app: "Lexend", system-ui, sans-serif;
+      }
+    </style>
+  </head>
+  <body class="min-h-dvh bg-[#F4F3FA] font-(family-name:--f-app) leading-relaxed font-light text-[#2A2540]">
+    <!-- Phone menu -->
+    <details class="sticky top-0 z-30 bg-white/95 shadow-sm backdrop-blur md:hidden">
+      <summary class="flex cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+        <span class="rounded-full bg-[#5B3E96] px-3 py-1 text-sm font-medium text-white">☰ Menu</span>
+        <span class="font-semibold text-[#3B2766]">The Mental Marathon</span>
+      </summary>
+      <nav class="space-y-1 px-4 pb-4">
+        {[...course, ...extras].map((item) => <a href={item.href} class="block rounded-xl px-3 py-2 font-normal hover:bg-[#ECE6F8]">{item.label}</a>)}
+      </nav>
+    </details>
+
+    <!-- Floating sidebar -->
+    <aside class="fixed top-4 bottom-4 left-4 hidden w-64 flex-col gap-6 overflow-y-auto rounded-3xl bg-white p-5 shadow-[0_10px_40px_-20px_#5B3E9666] md:flex">
+      <a href="/" class="flex items-center gap-3">
+        <span aria-hidden="true" class="size-9 rounded-full bg-[conic-gradient(#5B3E96_0_33%,#ECE6F8_0)]"></span>
+        <span class="leading-tight font-semibold text-[#3B2766]">The Mental Marathon</span>
+      </a>
+      <ol class="space-y-1">
+        {
+          course.map((item, i) => (
+            <li>
+              <a
+                href={item.href}
+                class:list={[
+                  "flex items-center gap-3 rounded-2xl px-3 py-2.5",
+                  i === activeIndex ? "bg-[#5B3E96] text-white" : "hover:bg-[#F4F3FA]",
+                ]}
+              >
+                <span
+                  class:list={[
+                    "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                    i === activeIndex ? "bg-white/20" : "bg-[#ECE6F8] text-[#5B3E96]",
+                  ]}
+                >
+                  {i === 0 ? "⌂" : i}
+                </span>
+                <span class="leading-snug font-normal">{item.label}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ol>
+      <ul class="space-y-1 border-t border-[#ECE6F8] pt-4">
+        {extras.map((item) => <li><a href={item.href} class="block rounded-2xl px-3 py-2 text-[#6E6888] hover:bg-[#F4F3FA] hover:text-[#2A2540]">{item.label}</a></li>)}
+      </ul>
+    </aside>
+
+    <main class="px-4 py-6 md:py-4 md:pr-6 md:pl-74">
+      <div class="mx-auto max-w-4xl space-y-6">
+        <!-- Header card with progress ring -->
+        <header class="flex flex-col-reverse items-center gap-6 rounded-[2rem] bg-linear-to-br from-[#ECE6F8] via-[#F6E9F2] to-[#FFE6D9] p-8 text-center md:flex-row md:justify-between md:p-12 md:text-left">
+          <div>
+            <h1 class="font-(family-name:--f-app) text-4xl font-semibold tracking-tight text-[#3B2766] md:text-5xl">The Mental Marathon</h1>
+            <h2 class="mt-2 font-(family-name:--f-app) text-3xl font-light tracking-tight text-[#5B3E96] md:text-[2.75rem]">Module 1: Fatigue</h2>
+          </div>
+          <div class="relative size-28 shrink-0" role="img" aria-label={`Module 1 of ${moduleCount}`}>
+            <svg viewBox="0 0 100 100" class="size-full -rotate-90">
+              <circle cx="50" cy="50" r="42" fill="none" stroke="#FFFFFF" stroke-width="10" />
+              <circle cx="50" cy="50" r="42" fill="none" stroke="#5B3E96" stroke-width="10" stroke-linecap="round" stroke-dasharray={`${ring / moduleCount} ${ring}`} />
+            </svg>
+            <span class="absolute inset-0 flex flex-col items-center justify-center text-[#3B2766]">
+              <span class="text-2xl font-semibold">1/{moduleCount}</span>
+              <span class="text-[0.65rem] tracking-wider uppercase">modules</span>
+            </span>
+          </div>
+        </header>
+
+        <!-- My rehab -->
+        <section class="grid items-center gap-8 rounded-3xl bg-white p-8 md:grid-cols-[minmax(0,1fr)_12rem]">
+          <div class="space-y-4">
+            <p class="inline-block rounded-full bg-[#D9F2E8] px-3 py-1 text-sm font-medium text-[#1F6B52]">My rehab</p>
+            <p>
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
+              magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+              consequat.
+            </p>
+            <p>
+              Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+              Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+            </p>
+          </div>
+          <figure class="mx-auto flex size-48 items-center justify-center rounded-full bg-[#D9F2E8] p-6 text-center text-sm text-[#1F6B52] ring-8 ring-[#F4F3FA]">
+            Photo of Lisa's rehab
+          </figure>
+        </section>
+
+        <!-- Frameworks -->
+        <section class="pt-6">
+          <h4 class="font-(family-name:--f-app) text-2xl font-semibold tracking-tight text-[#3B2766] md:text-[1.75rem]">Psychological Frameworks</h4>
+          <p class="text-[#6E6888]">underpinning fatigue</p>
+          <div class="mt-5 space-y-3">
+            {
+              frameworks.map((f) => (
+                <details class="framework group rounded-3xl bg-white shadow-[0_4px_20px_-12px_#5B3E9640]">
+                  <summary class="flex cursor-pointer list-none items-center gap-4 px-6 py-5 [&::-webkit-details-marker]:hidden">
+                    <span aria-hidden="true" class="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#ECE6F8] text-[#5B3E96]">
+                      <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3l9 4.5-9 4.5-9-4.5L12 3z" /><path d="M3 12l9 4.5 9-4.5" /><path d="M3 16.5L12 21l9-4.5" />
+                      </svg>
+                    </span>
+                    <span class="flex-1 text-lg font-medium">{f.title}</span>
+                    <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5 text-[#5B3E96] transition-transform group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </summary>
+                  <div class="grid gap-3 px-6 pb-6 md:grid-cols-3">
+                    {[
+                      ["What it is", f.what],
+                      ["How it works", f.how],
+                      ["Relation to this context", f.relation],
+                    ].map(([k, v], i) => (
+                      <div class:list={["rounded-2xl p-5", tiles[i]]}>
+                        <p class="text-sm font-semibold">{k}</p>
+                        <p class="mt-1.5 text-[0.95rem]">{v}</p>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              ))
+            }
+          </div>
+        </section>
+
+        <!-- Strategies -->
+        <section class="pt-6 pb-20">
+          <h4 class="font-(family-name:--f-app) text-2xl font-semibold tracking-tight text-[#3B2766] md:text-[1.75rem]">PIPT Strategies</h4>
+          <ol class="mt-5 grid gap-4 sm:grid-cols-3">
+            {
+              strategies.map((s, i) => (
+                <li class="rounded-3xl bg-white p-6">
+                  <span class="flex size-9 items-center justify-center rounded-full bg-[#FFE6D9] font-semibold text-[#A3502A]">{i + 1}</span>
+                  <p class="mt-4 font-medium">{s.title}</p>
+                  <p class="mt-1 text-[0.95rem] text-[#6E6888]">{s.text}</p>
+                </li>
+              ))
+            }
+          </ol>
+        </section>
+      </div>
+    </main>
+
+    <nav aria-label="Design options" class="fixed right-4 bottom-4 z-50 flex items-center gap-1 rounded-full bg-black/85 p-1 pl-4 text-sm text-white shadow-lg">
+      <span class="pr-2 font-medium">Design options</span>
+      <a href="/designs/option-1/" class="rounded-full px-3 py-1 hover:bg-white/15">1</a>
+      <a href="/designs/option-2/" class="rounded-full px-3 py-1 hover:bg-white/15">2</a>
+      <a href="/designs/option-3/" aria-current="page" class="rounded-full bg-white px-3 py-1 font-semibold text-black">3</a>
+      <a href="/module-1-fatigue/" class="rounded-full px-3 py-1 hover:bg-white/15">Current</a>
+    </nav>
+  </body>
+</html>

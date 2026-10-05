@@ -1,0 +1,187 @@
+---
+// Design option 2 — "Rehab Notebook": personal and warm. A lined exercise book, handwriting, a taped photo.
+import "../../styles/global.css";
+import { course, extras } from "../../data/site";
+
+const activeIndex = 1;
+const tabColours = ["bg-[#FBE7A1]", "bg-[#F7C6D9]", "bg-[#BFE3B4]", "bg-[#BBD7F2]"];
+
+const frameworks = [
+  {
+    title: "Cognitive-behavioural model of fatigue",
+    what: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio praesent libero, sed cursus ante dapibus diam.",
+    how: "Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum. Praesent mauris fusce nec tellus sed augue semper porta.",
+    relation: "Mauris massa. Vestibulum lacinia arcu eget nulla. Class aptent taciti sociosqu ad litora torquent per conubia nostra.",
+  },
+  {
+    title: "Central governor model",
+    what: "Curabitur sodales ligula in libero. Sed dignissim lacinia nunc. Curabitur tortor pellentesque nibh aenean quam.",
+    how: "In scelerisque sem at dolor. Maecenas mattis. Sed convallis tristique sem. Proin ut ligula vel nunc egestas porttitor.",
+    relation: "Morbi lectus risus, iaculis vel, suscipit quis, luctus non, massa. Fusce ac turpis quis ligula lacinia aliquet.",
+  },
+  {
+    title: "Energy envelope theory",
+    what: "Mauris ipsum. Nulla metus metus, ullamcorper vel, tincidunt sed, euismod in, nibh. Quisque volutpat condimentum velit.",
+    how: "Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Nam nec ante.",
+    relation: "Sed lacinia, urna non tincidunt mattis, tortor neque adipiscing diam, a cursus ipsum ante quis turpis.",
+  },
+];
+
+const strategies = [
+  { title: "Lorem ipsum dolor", text: "Nulla facilisi. Ut fringilla. Suspendisse potenti. Nunc feugiat mi a tellus consequat imperdiet." },
+  { title: "Sit amet consectetur", text: "Vestibulum sapien. Proin quam. Etiam ultrices. Suspendisse in justo eu magna luctus suscipit." },
+  { title: "Adipiscing elit sed", text: "Sed lectus. Integer euismod lacus luctus magna. Quisque cursus, metus vitae pharetra auctor." },
+];
+
+// Ruled lines every 2rem plus a red margin line, like an exercise book.
+const paper = [
+  "background-color:#FFFFFE",
+  "background-image:linear-gradient(to right, transparent 3rem, #E58A8A 3rem, #E58A8A calc(3rem + 2px), transparent calc(3rem + 2px)), repeating-linear-gradient(to bottom, transparent 0 calc(2rem - 1px), #D6E1F0 calc(2rem - 1px) 2rem)",
+].join(";");
+---
+
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Option 2: Rehab Notebook · The Mental Marathon</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap"
+      rel="stylesheet"
+    />
+    <style is:global>
+      :root {
+        --f-hand: "Caveat", "Comic Sans MS", cursive;
+        --f-body: "Literata", Georgia, serif;
+      }
+    </style>
+  </head>
+  <body class="min-h-dvh bg-[#E3E8E1] font-(family-name:--f-body) text-[1.02rem] text-[#263040]">
+    <!-- Phone menu -->
+    <details class="sticky top-0 z-30 border-b border-black/10 bg-[#FBE7A1] md:hidden">
+      <summary class="flex cursor-pointer list-none items-center gap-3 px-4 py-2 [&::-webkit-details-marker]:hidden">
+        <span class="font-(family-name:--f-hand) text-2xl font-bold">☰ Tabs</span>
+        <span class="font-(family-name:--f-hand) text-2xl text-[#2747A0]">The Mental Marathon</span>
+      </summary>
+      <nav class="px-4 pb-3">
+        {[...course, ...extras].map((item) => <a href={item.href} class="block font-(family-name:--f-hand) text-2xl">{item.label}</a>)}
+      </nav>
+    </details>
+
+    <!-- Sidebar: coloured notebook tabs -->
+    <aside class="fixed inset-y-0 left-0 hidden w-60 flex-col gap-6 overflow-y-auto py-8 pr-4 md:flex">
+      <a href="/" class="px-6 font-(family-name:--f-hand) text-4xl leading-[0.95] font-bold text-[#2747A0]">The Mental Marathon</a>
+      <ol class="space-y-2">
+        {
+          course.map((item, i) => (
+            <li>
+              <a
+                href={item.href}
+                class:list={[
+                  "block rounded-r-xl py-2 pr-4 pl-6 font-(family-name:--f-hand) text-2xl leading-tight shadow-sm transition-transform",
+                  tabColours[i],
+                  i === activeIndex ? "translate-x-3 font-bold shadow-md" : "hover:translate-x-1.5",
+                ]}
+              >
+                {item.eyebrow && item.eyebrow !== "Start" && <span class="block text-lg text-[#263040]/60">{item.eyebrow}</span>}
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+      </ol>
+      <ul class="space-y-1 px-6">
+        {extras.map((item) => <li><a href={item.href} class="font-(family-name:--f-hand) text-2xl text-[#2747A0] underline decoration-1 underline-offset-4">{item.label}</a></li>)}
+      </ul>
+    </aside>
+
+    <main class="px-3 py-6 md:py-10 md:pr-8 md:pl-64">
+      <article class="mx-auto max-w-4xl rounded-sm pt-8 pr-6 pb-16 pl-16 leading-8 shadow-[0_1px_2px_#0002,0_20px_40px_-20px_#0004] md:pr-12 md:pl-20" style={paper}>
+        <header class="text-center">
+          <h1 class="font-(family-name:--f-hand) text-5xl leading-[4rem] font-bold text-[#2747A0] md:text-6xl md:leading-[4rem]">
+            The Mental Marathon
+          </h1>
+          <h2 class="font-(family-name:--f-hand) text-[2.6rem] leading-[4rem] font-bold text-[#263040] md:text-5xl md:leading-[4rem]">
+            Module 1:
+            <span class="bg-[linear-gradient(100deg,transparent_2%,#FF9EC7aa_5%,#FF9EC7aa_95%,transparent_98%)] px-2">Fatigue</span>
+          </h2>
+        </header>
+
+        <!-- My rehab, with a taped photo -->
+        <section class="mt-8 flow-root">
+          <figure class="relative mx-auto mb-8 w-52 rotate-3 bg-white p-3 pb-2 shadow-lg md:float-right md:mb-4 md:ml-8">
+            <span aria-hidden="true" class="absolute -top-3 left-1/2 h-6 w-24 -translate-x-1/2 -rotate-3 bg-[#BFE3B4]/85"></span>
+            <div class="flex aspect-square items-center justify-center bg-[#E3E8E1] text-center text-sm text-[#263040]/60">Photo of Lisa's rehab</div>
+            <figcaption class="text-center font-(family-name:--f-hand) text-2xl leading-10">pic of Lisa, rehab</figcaption>
+          </figure>
+          <p class="font-(family-name:--f-hand) text-3xl leading-8 font-bold text-[#D9534F]">my rehab →</p>
+          <p class="mt-8">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
+            magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+            consequat.
+          </p>
+          <p class="mt-8">
+            Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur
+            sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+          </p>
+        </section>
+
+        <!-- Frameworks as index cards -->
+        <section class="mt-16">
+          <h4 class="font-(family-name:--f-hand) text-4xl leading-[4rem] font-bold text-[#2747A0] md:text-5xl">Psychological Frameworks</h4>
+          <p class="font-(family-name:--f-hand) text-2xl leading-8 text-[#D9534F]">underpinning fatigue</p>
+          <div class="mt-8 space-y-6">
+            {
+              frameworks.map((f, i) => (
+                <details class:list={["framework group border-t-4 border-[#E58A8A] bg-white leading-relaxed shadow-md", i % 2 ? "rotate-[0.4deg]" : "-rotate-[0.4deg]"]}>
+                  <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-3 [&::-webkit-details-marker]:hidden">
+                    <span class="font-(family-name:--f-hand) text-3xl font-bold underline decoration-[#2747A0] decoration-2 underline-offset-[6px]">{f.title}</span>
+                    <span aria-hidden="true" class="font-(family-name:--f-hand) text-4xl text-[#2747A0] transition-transform group-open:rotate-45">+</span>
+                  </summary>
+                  <dl class="space-y-4 px-5 pb-6">
+                    {[
+                      ["What it is", f.what],
+                      ["How it works", f.how],
+                      ["Relation to this context", f.relation],
+                    ].map(([k, v]) => (
+                      <div>
+                        <dt class="font-(family-name:--f-hand) text-2xl font-bold text-[#D9534F]">{k} →</dt>
+                        <dd>{v}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </details>
+              ))
+            }
+          </div>
+        </section>
+
+        <!-- Strategies as a checklist -->
+        <section class="mt-16">
+          <h4 class="font-(family-name:--f-hand) text-4xl leading-[4rem] font-bold text-[#2747A0] md:text-5xl">PIPT Strategies</h4>
+          <ul class="mt-4">
+            {
+              strategies.map((s) => (
+                <li class="flex gap-4">
+                  <span aria-hidden="true" class="mt-1.5 size-5 shrink-0 rotate-3 rounded-[3px] border-2 border-[#2747A0]"></span>
+                  <p><strong class="font-semibold">{s.title}.</strong> {s.text}</p>
+                </li>
+              ))
+            }
+          </ul>
+        </section>
+      </article>
+    </main>
+
+    <nav aria-label="Design options" class="fixed right-4 bottom-4 z-50 flex items-center gap-1 rounded-full bg-black/85 p-1 pl-4 font-sans text-sm text-white shadow-lg">
+      <span class="pr-2 font-semibold">Design options</span>
+      <a href="/designs/option-1/" class="rounded-full px-3 py-1 hover:bg-white/15">1</a>
+      <a href="/designs/option-2/" aria-current="page" class="rounded-full bg-white px-3 py-1 font-bold text-black">2</a>
+      <a href="/designs/option-3/" class="rounded-full px-3 py-1 hover:bg-white/15">3</a>
+      <a href="/module-1-fatigue/" class="rounded-full px-3 py-1 hover:bg-white/15">Current</a>
+    </nav>
+  </body>
+</html>

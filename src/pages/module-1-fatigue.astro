@@ -1,0 +1,105 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import RehabPhoto from "../components/RehabPhoto.astro";
+
+const label = "font-sans text-xs font-bold tracking-[0.18em] text-tape uppercase";
+
+const frameworks = [
+  {
+    title: "Cognitive-behavioural model of fatigue",
+    what: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio praesent libero, sed cursus ante dapibus diam.",
+    how: "Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum. Praesent mauris fusce nec tellus sed augue semper porta.",
+    relation: "Mauris massa. Vestibulum lacinia arcu eget nulla. Class aptent taciti sociosqu ad litora torquent per conubia nostra.",
+  },
+  {
+    title: "Central governor model",
+    what: "Curabitur sodales ligula in libero. Sed dignissim lacinia nunc. Curabitur tortor pellentesque nibh aenean quam.",
+    how: "In scelerisque sem at dolor. Maecenas mattis. Sed convallis tristique sem. Proin ut ligula vel nunc egestas porttitor.",
+    relation: "Morbi lectus risus, iaculis vel, suscipit quis, luctus non, massa. Fusce ac turpis quis ligula lacinia aliquet.",
+  },
+  {
+    title: "Energy envelope theory",
+    what: "Mauris ipsum. Nulla metus metus, ullamcorper vel, tincidunt sed, euismod in, nibh. Quisque volutpat condimentum velit.",
+    how: "Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Nam nec ante.",
+    relation: "Sed lacinia, urna non tincidunt mattis, tortor neque adipiscing diam, a cursus ipsum ante quis turpis.",
+  },
+];
+
+const strategies = [
+  { title: "Lorem ipsum dolor", text: "Nulla facilisi. Ut fringilla. Suspendisse potenti. Nunc feugiat mi a tellus consequat imperdiet." },
+  { title: "Sit amet consectetur", text: "Vestibulum sapien. Proin quam. Etiam ultrices. Suspendisse in justo eu magna luctus suscipit." },
+  { title: "Adipiscing elit sed", text: "Sed lectus. Integer euismod lacus luctus magna. Quisque cursus, metus vitae pharetra auctor." },
+];
+---
+
+<BaseLayout title="Module 1: Fatigue">
+  <header class="mb-12 text-center">
+    <h1>The Mental Marathon</h1>
+    <h2 class="mt-2 text-tape">Module 1: Fatigue</h2>
+  </header>
+
+  <section class="grid items-start gap-8 md:grid-cols-[minmax(0,1fr)_14rem] lg:gap-12">
+    <div class="max-w-prose space-y-4">
+      <p class={label}>My rehab</p>
+      <p>
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore
+        magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+        consequat.
+      </p>
+      <p>
+        Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur
+        sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+      </p>
+    </div>
+    <RehabPhoto class="max-w-56 md:max-w-none" />
+  </section>
+
+  <section class="mt-16">
+    <h4>
+      Psychological Frameworks
+      <span class="mt-1 block font-serif text-lg font-normal tracking-normal text-muted italic">underpinning fatigue</span>
+    </h4>
+    <p class="mt-3 text-muted">Select a framework to open it.</p>
+
+    <div class="mt-6 space-y-3">
+      {
+        frameworks.map((f) => (
+          <details class="framework group rounded-xl border border-line bg-white shadow-sm open:border-tape">
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 [&::-webkit-details-marker]:hidden">
+              <span class="font-display text-2xl leading-tight font-extrabold">{f.title}</span>
+              <span
+                aria-hidden="true"
+                class="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-tape text-xl leading-none text-tape transition-transform group-open:rotate-45"
+              >
+                +
+              </span>
+            </summary>
+            <dl class="grid gap-x-6 gap-y-4 border-t border-line px-5 py-5 md:grid-cols-[11rem_minmax(0,1fr)]">
+              <dt class={label}>What it is</dt>
+              <dd>{f.what}</dd>
+              <dt class={label}>How it works</dt>
+              <dd>{f.how}</dd>
+              <dt class={label}>Relation to this context</dt>
+              <dd>{f.relation}</dd>
+            </dl>
+          </details>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="mt-16">
+    <h4>PIPT Strategies</h4>
+    <ol class="mt-6 grid gap-4 sm:grid-cols-3">
+      {
+        strategies.map((s, i) => (
+          <li class="rounded-xl border border-line bg-white p-5 shadow-sm">
+            <span class="font-display text-3xl font-black text-pink">{i + 1}</span>
+            <p class="mt-1 font-bold">{s.title}</p>
+            <p class="mt-1 text-muted">{s.text}</p>
+          </li>
+        ))
+      }
+    </ol>
+  </section>
+</BaseLayout>
