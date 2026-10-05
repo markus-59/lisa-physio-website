@@ -1,0 +1,25 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { url } from "../data/site";
+
+// The video file lives in public/, so it's served as-is from the site root.
+const video = url("/chocthunda.mp4");
+---
+
+<BaseLayout title="Chocthunda">
+  <h1>Chocthunda</h1>
+
+  <figure class="mt-8 max-w-xl">
+    <video
+      controls
+      playsinline
+      preload="metadata"
+      width="442"
+      height="240"
+      class="aspect-[442/240] h-auto w-full rounded-xl bg-black shadow-sm"
+    >
+      <source src={video} type="video/mp4" />
+      <a href={video}>Download the Chocthunda video (MP4, 1.1 MB)</a>
+    </video>
+  </figure>
+</BaseLayout>
