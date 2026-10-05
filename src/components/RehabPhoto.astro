@@ -1,0 +1,32 @@
+---
+/**
+ * Photo of Lisa's rehab. Until `src` is set, shows an empty frame where the photo will go.
+ * To add a photo: put the file in /public (e.g. public/lisa-rehab.jpg) and pass src="/lisa-rehab.jpg".
+ */
+interface Props {
+  src?: string;
+  alt?: string;
+  caption?: string;
+  class?: string;
+}
+
+const { src, alt = "Lisa during her rehab", caption, class: className } = Astro.props;
+---
+
+<figure class:list={["w-full", className]}>
+  {
+    src ? (
+      <img src={src} alt={alt} class="aspect-4/5 w-full rounded-xl object-cover shadow-sm" />
+    ) : (
+      <div class="flex aspect-4/5 w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-line bg-white/60 p-6 text-center text-muted">
+        <svg aria-hidden="true" viewBox="0 0 24 24" class="size-10" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="5" width="18" height="14" rx="2" />
+          <circle cx="12" cy="12" r="3.5" />
+          <path d="M8 5l1.5-2h5L16 5" stroke-linejoin="round" />
+        </svg>
+        <span class="text-sm">Photo of Lisa's rehab</span>
+      </div>
+    )
+  }
+  {caption && <figcaption class="mt-2 text-sm text-muted">{caption}</figcaption>}
+</figure>

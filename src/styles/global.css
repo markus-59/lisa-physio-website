@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+/* Font files are loaded by Astro (see astro.config.mjs); these map them to Tailwind's font-* utilities. */
+@theme inline {
+  --font-display: var(--font-bigshoulders);
+  --font-serif: var(--font-newsreader);
+  --font-sans: var(--font-atkinson);
+}
+
+/* Palette: plaster-cast white, ink, and the two colours of kinesiology tape. */
+@theme {
+  --color-plaster: #f2f4f3;
+  --color-ink: #18212b;
+  --color-muted: #5e6b78;
+  --color-line: #d5dce1;
+  --color-tape: #1c5d99;
+  --color-tape-deep: #133f69;
+  --color-pink: #d94f70;
+}
+
+@layer base {
+  html {
+    @apply bg-plaster text-ink antialiased;
+    scroll-padding-top: 5rem;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-tape;
+  }
+}
+
+/* Smoothly open and close framework panels where the browser supports it. */
+@media (prefers-reduced-motion: no-preference) {
+  :root {
+    interpolate-size: allow-keywords;
+  }
+
+  details.framework::details-content {
+    block-size: 0;
+    overflow-y: clip;
+    transition:
+      block-size 250ms ease,
+      content-visibility 250ms allow-discrete;
+  }
+
+  details.framework[open]::details-content {
+    block-size: auto;
+  }
+}

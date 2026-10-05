@@ -1,0 +1,83 @@
+---
+import { course, extras, isCurrent, siteTitle } from "../data/site";
+
+const { pathname } = Astro.url;
+const activeIndex = course.findIndex((item) => isCurrent(item.href, pathname));
+---
+
+<nav aria-label="Site" class="flex h-full flex-col gap-8 px-6 py-8">
+  <a href="/" class="font-display text-3xl leading-none font-extrabold tracking-tight uppercase">
+    {siteTitle}
+  </a>
+
+  <!-- The course is drawn as a route: solid up to where you are, dashed beyond. -->
+  <ol class="relative">
+    {
+      course.map((item, i) => {
+        const current = i === activeIndex;
+        const isLast = i === course.length - 1;
+        return (
+          <li class="relative">
+            {!isLast && (
+              <span
+                aria-hidden="true"
+                class:list={[
+                  "absolute top-5 left-[7px] h-full border-l-2",
+                  i < activeIndex ? "border-tape border-solid" : "border-tape/35 border-dashed",
+                ]}
+              />
+            )}
+            <a
+              href={item.href}
+              aria-current={current ? "page" : undefined}
+              class="group relative flex flex-col py-2.5 pl-8"
+            >
+              <span
+                aria-hidden="true"
+                class:list={[
+                  "absolute top-3.5 left-0 size-4 rounded-full border-2 transition-colors",
+                  current
+                    ? "border-pink bg-pink ring-4 ring-pink/20"
+                    : "border-tape bg-plaster group-hover:bg-tape",
+                ]}
+              />
+              {item.eyebrow && (
+                <span class="text-xs font-bold tracking-[0.16em] text-muted uppercase">{item.eyebrow}</span>
+              )}
+              <span
+                class:list={[
+                  "text-[1.05rem] leading-snug",
+                  current ? "font-bold text-ink" : "text-tape-deep group-hover:underline",
+                ]}
+              >
+                {item.label}
+              </span>
+            </a>
+          </li>
+        );
+      })
+    }
+  </ol>
+
+  <ul class="space-y-1 border-t border-line pt-6">
+    {
+      extras.map((item) => {
+        const current = isCurrent(item.href, pathname);
+        return (
+          <li>
+            <a
+              href={item.href}
+              aria-current={current ? "page" : undefined}
+              class:list={[
+                "block rounded-md px-2 py-1.5 -mx-2",
+                current ? "bg-white font-bold text-ink" : "text-tape-deep hover:underline",
+              ]}
+            >
+              {item.label}
+            </a>
+          </li>
+        );
+      })
+    }
+  </ul>
+</nav>
