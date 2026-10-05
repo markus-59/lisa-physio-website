@@ -1,7 +1,8 @@
 ---
 // Design option 2 — "Rehab Notebook": personal and warm. A lined exercise book, handwriting, a taped photo.
 import "../../styles/global.css";
-import { course, extras } from "../../data/site";
+import DesignSwitch from "../../components/DesignSwitch.astro";
+import { course, extras, url } from "../../data/site";
 
 const activeIndex = 1;
 const tabColours = ["bg-[#FBE7A1]", "bg-[#F7C6D9]", "bg-[#BFE3B4]", "bg-[#BBD7F2]"];
@@ -73,7 +74,7 @@ const paper = [
 
     <!-- Sidebar: coloured notebook tabs -->
     <aside class="fixed inset-y-0 left-0 hidden w-60 flex-col gap-6 overflow-y-auto py-8 pr-4 md:flex">
-      <a href="/" class="px-6 font-(family-name:--f-hand) text-4xl leading-[0.95] font-bold text-[#2747A0]">The Mental Marathon</a>
+      <a href={url("/")} class="px-6 font-(family-name:--f-hand) text-4xl leading-[0.95] font-bold text-[#2747A0]">The Mental Marathon</a>
       <ol class="space-y-2">
         {
           course.map((item, i) => (
@@ -176,12 +177,6 @@ const paper = [
       </article>
     </main>
 
-    <nav aria-label="Design options" class="fixed right-4 bottom-4 z-50 flex items-center gap-1 rounded-full bg-black/85 p-1 pl-4 font-sans text-sm text-white shadow-lg">
-      <span class="pr-2 font-semibold">Design options</span>
-      <a href="/designs/option-1/" class="rounded-full px-3 py-1 hover:bg-white/15">1</a>
-      <a href="/designs/option-2/" aria-current="page" class="rounded-full bg-white px-3 py-1 font-bold text-black">2</a>
-      <a href="/designs/option-3/" class="rounded-full px-3 py-1 hover:bg-white/15">3</a>
-      <a href="/module-1-fatigue/" class="rounded-full px-3 py-1 hover:bg-white/15">Current</a>
-    </nav>
+    <DesignSwitch current="2" />
   </body>
 </html>

@@ -3,6 +3,9 @@ import { defineConfig, fontProviders } from "astro/config";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
+  // GitHub Pages serves this project site from /lisa-physio-website/. Build links with url() from src/data/site.ts.
+  site: "https://markus-59.github.io",
+  base: "/lisa-physio-website",
   vite: {
     plugins: [tailwindcss()],
   },

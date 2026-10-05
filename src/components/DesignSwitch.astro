@@ -1,0 +1,30 @@
+---
+// Floating switcher for comparing the design styles. Remove once a style is chosen.
+import { designOptions } from "../data/site";
+
+interface Props {
+  /** The option this page shows: "1" to "4", or "current" for the live site style. */
+  current: string;
+}
+
+const { current } = Astro.props;
+---
+
+<nav
+  aria-label="Design options"
+  class="fixed right-4 bottom-4 z-50 flex items-center gap-1 rounded-full bg-black/85 p-1 pl-4 font-sans text-sm text-white shadow-lg"
+>
+  <span class="pr-2 font-semibold"><span class="hidden sm:inline">Design options</span><span class="sm:hidden">Styles</span></span>
+  {
+    designOptions.map((option) => (
+      <a
+        href={option.href}
+        title={option.name}
+        aria-current={option.id === current ? "page" : undefined}
+        class:list={["rounded-full px-3 py-1", option.id === current ? "bg-white font-bold text-black" : "hover:bg-white/15"]}
+      >
+        {option.label}
+      </a>
+    ))
+  }
+</nav>

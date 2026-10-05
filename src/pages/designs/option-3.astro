@@ -1,7 +1,8 @@
 ---
 // Design option 3 — "Calm Clinic": soft and reassuring, like a wellbeing app. Rounded cards, pastel tiles, a progress ring.
 import "../../styles/global.css";
-import { course, extras } from "../../data/site";
+import DesignSwitch from "../../components/DesignSwitch.astro";
+import { course, extras, url } from "../../data/site";
 
 const activeIndex = 1;
 const moduleCount = course.length - 1;
@@ -66,7 +67,7 @@ const tiles = ["bg-[#ECE6F8]", "bg-[#D9F2E8]", "bg-[#FFE6D9]"];
 
     <!-- Floating sidebar -->
     <aside class="fixed top-4 bottom-4 left-4 hidden w-64 flex-col gap-6 overflow-y-auto rounded-3xl bg-white p-5 shadow-[0_10px_40px_-20px_#5B3E9666] md:flex">
-      <a href="/" class="flex items-center gap-3">
+      <a href={url("/")} class="flex items-center gap-3">
         <span aria-hidden="true" class="size-9 rounded-full bg-[conic-gradient(#5B3E96_0_33%,#ECE6F8_0)]"></span>
         <span class="leading-tight font-semibold text-[#3B2766]">The Mental Marathon</span>
       </a>
@@ -194,12 +195,6 @@ const tiles = ["bg-[#ECE6F8]", "bg-[#D9F2E8]", "bg-[#FFE6D9]"];
       </div>
     </main>
 
-    <nav aria-label="Design options" class="fixed right-4 bottom-4 z-50 flex items-center gap-1 rounded-full bg-black/85 p-1 pl-4 text-sm text-white shadow-lg">
-      <span class="pr-2 font-medium">Design options</span>
-      <a href="/designs/option-1/" class="rounded-full px-3 py-1 hover:bg-white/15">1</a>
-      <a href="/designs/option-2/" class="rounded-full px-3 py-1 hover:bg-white/15">2</a>
-      <a href="/designs/option-3/" aria-current="page" class="rounded-full bg-white px-3 py-1 font-semibold text-black">3</a>
-      <a href="/module-1-fatigue/" class="rounded-full px-3 py-1 hover:bg-white/15">Current</a>
-    </nav>
+    <DesignSwitch current="3" />
   </body>
 </html>
