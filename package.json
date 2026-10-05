@@ -6,11 +6,15 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "build:locked": "astro build && staticrypt dist/* -r -d .locked --short --remember 30 -t password-template.html && rm -rf dist && mv .locked dist",
     "preview": "astro preview"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "astro": "^7.3.5",
     "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "staticrypt": "^3.5.4"
   }
 }

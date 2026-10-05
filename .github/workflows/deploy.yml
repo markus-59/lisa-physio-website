@@ -19,9 +19,21 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Every page is encrypted with this password (see build:locked in package.json).
+    # Set it once with: gh secret set SITE_PASSWORD
+    env:
+      STATICRYPT_PASSWORD: ${{ secrets.SITE_PASSWORD }}
     steps:
+      - name: Check the site password is set
+        run: |
+          if [ -z "$STATICRYPT_PASSWORD" ]; then
+            echo "::error::The SITE_PASSWORD secret is missing, so the site can't be locked."
+            exit 1
+          fi
       - uses: actions/checkout@v7
       - uses: withastro/action@v6
+        with:
+          build-cmd: npm run build:locked
 
   deploy:
     needs: build
